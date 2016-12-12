@@ -116,6 +116,8 @@ class CoAuthors_Plus {
 		// Support infinite scroll for Guest Authors on author pages
 		add_filter( 'infinite_scroll_js_settings', array( $this, 'filter_infinite_scroll_js_settings' ), 10, 2 );
 
+		// Change the orderby to term_order so that order is displayed correctly
+		add_filter( 'get_terms_orderby', array( $this, 'filter_terms_order' ), 10, 3 );
 	}
 
 	/**
@@ -357,32 +359,32 @@ class CoAuthors_Plus {
 			?>
 			<div id="coauthors-readonly" class="hide-if-js">
 				<ul>
-				<?php
-				foreach ( $coauthors as $coauthor ) :
-					$count++;
-					?>
-					<li>
-						<?php echo get_avatar( $coauthor->user_email, $this->gravatar_size ); ?>
-						<span id="<?php echo esc_attr( 'coauthor-readonly-' . $count ); ?>" class="coauthor-tag">
+					<?php
+					foreach ( $coauthors as $coauthor ) :
+						$count++;
+						?>
+						<li>
+							<?php echo get_avatar( $coauthor->user_email, $this->gravatar_size ); ?>
+							<span id="<?php echo esc_attr( 'coauthor-readonly-' . $count ); ?>" class="coauthor-tag">
 							<input type="text" name="coauthorsinput[]" readonly="readonly" value="<?php echo esc_attr( $coauthor->display_name ); ?>" />
 							<input type="text" name="coauthors[]" value="<?php echo esc_attr( $coauthor->user_login ); ?>" />
 							<input type="text" name="coauthorsemails[]" value="<?php echo esc_attr( $coauthor->user_email ); ?>" />
 							<input type="text" name="coauthorsnicenames[]" value="<?php echo esc_attr( $coauthor->user_nicename ); ?>" />
 						</span>
-					</li>
-					<?php
-				endforeach;
-				?>
+						</li>
+						<?php
+					endforeach;
+					?>
 				</ul>
 				<div class="clear"></div>
-				<p><?php echo wp_kses( __( '<strong>Note:</strong> To edit post authors, please enable javascript or use a javascript-capable browser', 'co-authors-plus' ), array( 'strong' => array() ) ); ?></p>
+				<p><?php wp_kses( __( '<strong>Note:</strong> To edit post authors, please enable javascript or use a javascript-capable browser', 'co-authors-plus' ), array( 'strong' => array() ) ); ?></p>
 			</div>
 			<?php
 		endif;
 		?>
 
 		<div id="coauthors-edit" class="hide-if-no-js">
-			<p><?php echo wp_kses( __( 'Click on an author to change them. Drag to change their order. Click on <strong>Remove</strong> to remove them.', 'co-authors-plus' ), array( 'strong' => array() ) ); ?></p>
+			<p><?php wp_kses( __( 'Click on an author to change them. Drag to change their order. Click on <strong>Remove</strong> to remove them.', 'co-authors-plus' ), array( 'strong' => array() ) ); ?></p>
 		</div>
 
 		<?php wp_nonce_field( 'coauthors-edit', 'coauthors-nonce' ); ?>
@@ -439,18 +441,18 @@ class CoAuthors_Plus {
 			$count = 1;
 			foreach ( $authors as $author ) :
 				$args = array(
-						'author_name' => $author->user_nicename,
-					);
+					'author_name' => $author->user_nicename,
+				);
 				if ( 'post' != $post->post_type ) {
 					$args['post_type'] = $post->post_type;
 				}
 				$author_filter_url = add_query_arg( array_map( 'rawurlencode', $args ), admin_url( 'edit.php' ) );
 				?>
 				<a href="<?php echo esc_url( $author_filter_url ); ?>"
-				data-user_nicename="<?php echo esc_attr( $author->user_nicename ) ?>"
-				data-user_email="<?php echo esc_attr( $author->user_email ) ?>"
-				data-display_name="<?php echo esc_attr( $author->display_name ) ?>"
-				data-user_login="<?php echo esc_attr( $author->user_login ) ?>"
+				   data-user_nicename="<?php echo esc_attr( $author->user_nicename ) ?>"
+				   data-user_email="<?php echo esc_attr( $author->user_email ) ?>"
+				   data-display_name="<?php echo esc_attr( $author->display_name ) ?>"
+				   data-user_login="<?php echo esc_attr( $author->user_login ) ?>"
 				><?php echo esc_html( $author->display_name ); ?></a><?php echo ( $count < count( $authors ) ) ? ',' : ''; ?>
 				<?php
 				$count++;
@@ -506,7 +508,7 @@ class CoAuthors_Plus {
 		<label class="inline-edit-group inline-edit-coauthors">
 			<span class="title"><?php esc_html_e( 'Authors', 'co-authors-plus' ) ?></span>
 			<div id="coauthors-edit" class="hide-if-no-js">
-				<p><?php echo wp_kses( __( 'Click on an author to change them. Drag to change their order. Click on <strong>Remove</strong> to remove them.', 'co-authors-plus' ), array( 'strong' => array() ) ); ?></p>
+				<p><?php wp_kses( __( 'Click on an author to change them. Drag to change their order. Click on <strong>Remove</strong> to remove them.', 'co-authors-plus' ), array( 'strong' => array() ) ); ?></p>
 			</div>
 			<?php wp_nonce_field( 'coauthors-edit', 'coauthors-nonce' ); ?>
 		</label>
@@ -611,18 +613,12 @@ class CoAuthors_Plus {
 			}
 
 			// Check to see that JOIN hasn't already been added. Props michaelingp and nbaxley
-			$term_relationship_inner_join = " INNER JOIN {$wpdb->term_relationships} ON ({$wpdb->posts}.ID = {$wpdb->term_relationships}.object_id)";
-			$term_relationship_left_join = " LEFT JOIN {$wpdb->term_relationships} ON ({$wpdb->posts}.ID = {$wpdb->term_relationships}.object_id)";
+			$term_relationship_join = " INNER JOIN {$wpdb->term_relationships} ON ({$wpdb->posts}.ID = {$wpdb->term_relationships}.object_id)";
+			$term_taxonomy_join = " INNER JOIN {$wpdb->term_taxonomy} ON ( {$wpdb->term_relationships}.term_taxonomy_id = {$wpdb->term_taxonomy}.term_taxonomy_id )";
 
-			$term_taxonomy_join  = " INNER JOIN {$wpdb->term_relationships} AS tr1 ON ({$wpdb->posts}.ID = tr1.object_id)";
-			$term_taxonomy_join .= " INNER JOIN {$wpdb->term_taxonomy} ON ( tr1.term_taxonomy_id = {$wpdb->term_taxonomy}.term_taxonomy_id )";
-
-			// 4.6+ uses a LEFT JOIN for tax queries so we need to check for both
-			if ( false === strpos( $join, trim( $term_relationship_inner_join ) )
-				&& false === strpos( $join, trim( $term_relationship_left_join ) ) ) {
-				$join .= $term_relationship_left_join;
+			if ( false === strpos( $join, trim( $term_relationship_join ) ) ) {
+				$join .= str_replace( 'INNER JOIN', 'LEFT JOIN', $term_relationship_join );
 			}
-
 			if ( false === strpos( $join, trim( $term_taxonomy_join ) ) ) {
 				$join .= str_replace( 'INNER JOIN', 'LEFT JOIN', $term_taxonomy_join );
 			}
@@ -1089,16 +1085,16 @@ class CoAuthors_Plus {
 		// backfill with user details. Let's do this first... easier than running
 		// an upgrade script that could break on a lot of users
 		$args = array(
-				'count_total' => false,
-				'search' => sprintf( '*%s*', $search ),
-				'search_fields' => array(
-					'ID',
-					'display_name',
-					'user_email',
-					'user_login',
-				),
-				'fields' => 'all_with_meta',
-			);
+			'count_total' => false,
+			'search' => sprintf( '*%s*', $search ),
+			'search_fields' => array(
+				'ID',
+				'display_name',
+				'user_email',
+				'user_login',
+			),
+			'fields' => 'all_with_meta',
+		);
 		add_action( 'pre_user_query', array( $this, 'action_pre_user_query' ) );
 		$found_users = get_users( $args );
 		remove_action( 'pre_user_query', array( $this, 'action_pre_user_query' ) );
@@ -1111,10 +1107,10 @@ class CoAuthors_Plus {
 		}
 
 		$args = array(
-				'search' => $search,
-				'get' => 'all',
-				'number' => 10,
-			);
+			'search' => $search,
+			'get' => 'all',
+			'number' => 10,
+		);
 		$args = apply_filters( 'coauthors_search_authors_get_terms_args', $args );
 		add_filter( 'terms_clauses', array( $this, 'filter_terms_clauses' ) );
 		$found_terms = get_terms( $this->coauthor_taxonomy, $args );
@@ -1190,7 +1186,7 @@ class CoAuthors_Plus {
 			'input_box_title' => __( 'Click to change this author, or drag to change their position', 'co-authors-plus' ),
 			'search_box_text' => __( 'Search for an author', 'co-authors-plus' ),
 			'help_text' => __( 'Click on an author to change them. Drag to change their order. Click on <strong>Remove</strong> to remove them.', 'co-authors-plus' ),
-			);
+		);
 		wp_localize_script( 'co-authors-plus-js', 'coAuthorsPlusStrings', $js_strings );
 
 	}
@@ -1220,8 +1216,8 @@ class CoAuthors_Plus {
 		$views = array_reverse( $views );
 		$all_view = array_pop( $views );
 		$mine_args = array(
-				'author_name'           => wp_get_current_user()->user_nicename,
-			);
+			'author_name'           => wp_get_current_user()->user_nicename,
+		);
 		if ( 'post' != get_post_type() ) {
 			$mine_args['post_type'] = get_post_type();
 		}
@@ -1247,9 +1243,9 @@ class CoAuthors_Plus {
 			return;
 		}
 		?>
-			<script type="text/javascript">
-				// AJAX link used for the autosuggest
-				var coAuthorsPlus_ajax_suggest_link = <?php
+		<script type="text/javascript">
+			// AJAX link used for the autosuggest
+			var coAuthorsPlus_ajax_suggest_link = <?php
 				echo wp_json_encode(
 					add_query_arg(
 						array(
@@ -1259,7 +1255,7 @@ class CoAuthors_Plus {
 						wp_nonce_url( 'admin-ajax.php', 'coauthors-search' )
 					)
 				); ?>;
-			</script>
+		</script>
 		<?php
 	}
 
@@ -1289,10 +1285,10 @@ class CoAuthors_Plus {
 		}
 
 		$caps_to_modify = array(
-				$obj->cap->edit_post,
-				'edit_post', // Need to filter this too, unfortunately: http://core.trac.wordpress.org/ticket/22415
-				$obj->cap->edit_others_posts, // This as well: http://core.trac.wordpress.org/ticket/22417
-			);
+			$obj->cap->edit_post,
+			'edit_post', // Need to filter this too, unfortunately: http://core.trac.wordpress.org/ticket/22415
+			$obj->cap->edit_others_posts, // This as well: http://core.trac.wordpress.org/ticket/22417
+		);
 		if ( ! in_array( $cap, $caps_to_modify ) ) {
 			return $allcaps;
 		}
@@ -1469,6 +1465,22 @@ class CoAuthors_Plus {
 		// Send back the updated Open Graph Tags
 		return apply_filters( 'coauthors_open_graph_tags', $og_tags );
 	}
+
+	/**
+	 * Filter the terms_order so that get_the_terms retrieves the authors in the correct order.
+	 *
+	 * @param $orderby
+	 * @param $query_vars
+	 * @param $taxonomies
+	 *
+	 * @return string
+	 */
+	public function filter_terms_order( $orderby, $query_vars, $taxonomies ) {
+		if ( ! empty( $taxonomies[0] ) && ( 1 === count( $taxonomies ) ) && 'author' === $taxonomies[0] ) {
+			$orderby = 'tr.term_order';
+		}
+		return $orderby;
+	}
 }
 
 global $coauthors_plus;
@@ -1601,7 +1613,6 @@ function cap_filter_comment_moderation_email_recipients( $recipients, $comment_i
 
 	if ( isset( $post_id ) ) {
 		$coauthors = get_coauthors( $post_id );
-		$extra_recipients = array();
 		foreach ( $coauthors as $user ) {
 			if ( ! empty( $user->user_email ) ) {
 				$extra_recipients[] = $user->user_email;
