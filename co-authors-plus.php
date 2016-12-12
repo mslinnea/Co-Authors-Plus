@@ -116,6 +116,8 @@ class CoAuthors_Plus {
 		// Support infinite scroll for Guest Authors on author pages
 		add_filter( 'infinite_scroll_js_settings', array( $this, 'filter_infinite_scroll_js_settings' ), 10, 2 );
 
+		// Change the orderby to term_order so that order is displayed correctly
+		add_filter( 'get_terms_orderby', array( $this, 'filter_terms_order' ), 10, 3 );
 	}
 
 	/**
@@ -1468,6 +1470,26 @@ class CoAuthors_Plus {
 
 		// Send back the updated Open Graph Tags
 		return apply_filters( 'coauthors_open_graph_tags', $og_tags );
+	}
+
+	/**
+	 * Filter the terms_order so that get_the_terms retrieves the authors in the correct order.
+	 *
+	 * @param $orderby
+	 * @param $query_vars
+	 * @param $taxonomies
+	 *
+	 * @return string
+	 */
+	public function filter_terms_order( $orderby, $query_vars, $taxonomies ) {
+		if ( ! empty( $query_vars['object_ids'] )
+			&& ! empty( $taxonomies[0] )
+			&& ( 1 === count( $taxonomies ) )
+			&& 'author' === $taxonomies[0] )
+		{
+			$orderby = 'tr.term_order';
+		}
+		return $orderby;
 	}
 }
 
